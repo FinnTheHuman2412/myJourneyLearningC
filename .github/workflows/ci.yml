@@ -1,0 +1,29 @@
+name: C CI
+on: [push, pull_request]
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+        asan: [false, true]
+        ubsan: [false, true]
+        exclude:
+          - asan: false
+            ubsan: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang
+      - name: Configure flags
+        run: |
+          flags="-Wall -Wextra -Werror -O2"
+          [ "${{matrix.asan}}" = "true" ] && flags="$flags -fsanitize=address"
+          [ "${{matrix.ubsan}}" = "true" ] && flags="$flags -fsanitize=undefined"
+          echo "CFLAGS=$flags" >> $GITHUB_ENV
+          echo "CC=${{matrix.cc}}" >> $GITHUB_ENV
+      - name: Build
+        run: make -C week1 clean && make -C week1 a CC="$CC" CFLAGS="$CFLAGS"
+      - name: Test
+        run: make -C week1 test
